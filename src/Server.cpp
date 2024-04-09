@@ -7,6 +7,29 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <thread>
+
+void handle_client(int client_fd)
+{
+  const char *pong_response = "+PONG\r\n";
+  int response_len = strlen(pong_response);
+
+  while (true)
+  {
+    char buffer[1024];
+    int bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
+
+    if (bytes_received <= 0)
+    {
+      std::cout << "Client disconnected.\n";
+      break;
+    }
+
+    send(client_fd, pong_response, response_len, 0);
+  }
+
+  close(client_fd);
+}
 
 int main(int argc, char **argv)
 {
@@ -53,28 +76,16 @@ int main(int argc, char **argv)
   int client_addr_len = sizeof(client_addr);
 
   std::cout << "Waiting for a client to connect...\n";
-  int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len);
-  std::cout << "Client connected\n";
-
-  const char *pong_response = "+PONG\r\n";
-  int response_len = strlen(pong_response);
 
   while (true)
   {
-    char buffer[1024];
-    int bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
+    int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len);
+    std::cout << "Client connected\n";
 
-    if (bytes_received <= 0)
-    {
-      std::cout << "Client disconnected.\n";
-      break;
-    }
-
-    send(client_fd, pong_response, response_len, 0);
+    std::thread client_thread(handle_client, client_fd);
+    client_thread.detach();
   }
 
-  close(client_fd);
   close(server_fd);
-
   return 0;
 }

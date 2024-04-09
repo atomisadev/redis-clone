@@ -57,8 +57,21 @@ int main(int argc, char **argv)
   std::cout << "Client connected\n";
 
   const char *pong_response = "+PONG\r\n";
+  int response_len = strlen(pong_response);
 
-  send(client_fd, pong_response, strlen(pong_response), 0);
+  while (true)
+  {
+    char buffer[1024];
+    int bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
+
+    if (bytes_received <= 0)
+    {
+      std::cout << "Client disconnected.\n";
+      break;
+    }
+
+    send(client_fd, pong_response, response_len, 0);
+  }
 
   close(client_fd);
   close(server_fd);

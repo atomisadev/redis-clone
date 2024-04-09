@@ -5,9 +5,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <thread>
 
 void handle_client(int client_fd)
 {
@@ -75,15 +75,30 @@ int main(int argc, char **argv)
   struct sockaddr_in client_addr;
   int client_addr_len = sizeof(client_addr);
 
-  std::cout << "Waiting for a client to connect...\n";
+  std::cout << "Waiting for clients to connect...\n";
 
   while (true)
   {
     int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len);
     std::cout << "Client connected\n";
 
-    std::thread client_thread(handle_client, client_fd);
-    client_thread.detach();
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+      perror("Error in creating child process");
+      exit(1);
+    }
+    else if (pid == 0)
+    {
+      close(server_fd);
+      handle_client(client_fd);
+      exit(0);
+    }
+    else
+    {
+      close(client_fd);
+      waitpid(-1, NULL, WNOHANG);
+    }
   }
 
   close(server_fd);

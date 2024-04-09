@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 
   if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0)
   {
-    std::cerr << "Failed to bind to port 6379\n";
+    std::cerr << "Failed to load port 6379\n";
     return 1;
   }
 
@@ -53,10 +53,14 @@ int main(int argc, char **argv)
   int client_addr_len = sizeof(client_addr);
 
   std::cout << "Waiting for a client to connect...\n";
-
-  accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len);
+  int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len);
   std::cout << "Client connected\n";
 
+  const char *pong_response = "+PONG\r\n";
+
+  send(client_fd, pong_response, strlen(pong_response), 0);
+
+  close(client_fd);
   close(server_fd);
 
   return 0;

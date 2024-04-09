@@ -8,12 +8,11 @@
 #include <sys/wait.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <ctype.h>
+#include <algorithm>
 
 void handle_client(int client_fd)
 {
-  const char *pong_response = "+PONG\r\n";
-  int response_len = strlen(pong_response);
-
   while (true)
   {
     char buffer[1024];
@@ -25,7 +24,23 @@ void handle_client(int client_fd)
       break;
     }
 
-    send(client_fd, pong_response, response_len, 0);
+    std::string command = std::string(buffer).substr(0, bytes_received);
+    std::transform(command.begin(), command.end(), command.begin(), ::tolower);
+
+    if (command.find("ping\r\n") != std::string::npos)
+    {
+      size_t arg_start = command.find_first_of(" \r\n") + 1;
+      size_t arg_end = command.find_last_of("\r\n");
+      size_t arg_len = (arg_end == std::string::npos) ? 0 : arg_end - arg_start;
+
+      // Construct the RESP bulk string response
+      std::string response = "$" + std::to_string(arg_len) + "\r\n" + command.substr(arg_start, arg_len) + "\r\n";
+      send(client_fd, response.c_str(), response.length(), 0);
+    }
+    else
+    {
+      send(client_fd, "-ERR unknown command\r\n", 22, 0);
+    }
   }
 
   close(client_fd);
